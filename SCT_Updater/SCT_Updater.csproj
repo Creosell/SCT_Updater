@@ -62,7 +62,7 @@
   </PropertyGroup>
   <PropertyGroup />
   <PropertyGroup>
-    <ApplicationIcon>earth-arrow-down.ico</ApplicationIcon>
+    <ApplicationIcon>images\earth-arrow-down.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Costura, Version=6.0.0.0, Culture=neutral, PublicKeyToken=9919ef960d84173d, processorArchitecture=MSIL">
@@ -94,6 +94,7 @@
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="LocalStateService.cs" />
+    <Compile Include="Logger.cs" />
     <Compile Include="ManifestClasses.cs" />
     <Compile Include="NextcloudClient.cs" />
     <Compile Include="Program.cs" />
@@ -111,6 +112,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <AdditionalFiles Include=".env">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -143,9 +145,11 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="earth-arrow-down.ico" />
+    <EmbeddedResource Include="images\earth-arrow-down.ico" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="images\reload.png" />
+    <Content Include="images\reload_inactive.png" />
     <Content Include="Upload_scripts\create_manifest.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

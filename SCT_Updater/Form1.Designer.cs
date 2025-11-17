@@ -36,8 +36,8 @@
             this.progressBar = new System.Windows.Forms.ProgressBar();
             this.lblStatus = new System.Windows.Forms.Label();
             this.btnCheckUpdates = new System.Windows.Forms.Button();
+            this.btnUpdateAll = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dgvModules)).BeginInit();
-            this.cmsRowMenu.SuspendLayout();
             this.SuspendLayout();
             // 
             // dgvModules
@@ -54,18 +54,13 @@
             // cmsRowMenu
             // 
             this.cmsRowMenu.ImageScalingSize = new System.Drawing.Size(20, 20);
-            this.cmsRowMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.tsmiReinstall});
             this.cmsRowMenu.Name = "cmsRowMenu";
-            this.cmsRowMenu.Size = new System.Drawing.Size(141, 28);
-            this.cmsRowMenu.Opening += new System.ComponentModel.CancelEventHandler(this.cmsRowMenu_Opening);
+            this.cmsRowMenu.Size = new System.Drawing.Size(61, 4);
             // 
             // tsmiReinstall
             // 
             this.tsmiReinstall.Name = "tsmiReinstall";
-            this.tsmiReinstall.Size = new System.Drawing.Size(140, 24);
-            this.tsmiReinstall.Text = "Re-install";
-            this.tsmiReinstall.Click += new System.EventHandler(this.tsmiReinstall_Click);
+            this.tsmiReinstall.Size = new System.Drawing.Size(32, 19);
             // 
             // progressBar
             // 
@@ -81,7 +76,7 @@
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(44, 16);
             this.lblStatus.TabIndex = 2;
-            this.lblStatus.Text = "label1";
+            this.lblStatus.Text = "Status";
             // 
             // btnCheckUpdates
             // 
@@ -93,12 +88,23 @@
             this.btnCheckUpdates.UseVisualStyleBackColor = true;
             this.btnCheckUpdates.Click += new System.EventHandler(this.btnCheckUpdates_Click);
             // 
+            // btnUpdateAll
+            // 
+            this.btnUpdateAll.Location = new System.Drawing.Point(181, 282);
+            this.btnUpdateAll.Name = "btnUpdateAll";
+            this.btnUpdateAll.Size = new System.Drawing.Size(145, 39);
+            this.btnUpdateAll.TabIndex = 4;
+            this.btnUpdateAll.Text = "Update all";
+            this.btnUpdateAll.UseVisualStyleBackColor = true;
+            this.btnUpdateAll.Click += new System.EventHandler(this.btnUpdateAll_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ButtonHighlight;
-            this.ClientSize = new System.Drawing.Size(800, 341);
+            this.ClientSize = new System.Drawing.Size(807, 337);
+            this.Controls.Add(this.btnUpdateAll);
             this.Controls.Add(this.btnCheckUpdates);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.progressBar);
@@ -108,7 +114,6 @@
             this.Text = "Updater";
             this.Load += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dgvModules)).EndInit();
-            this.cmsRowMenu.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -122,6 +127,7 @@
         private System.Windows.Forms.Button btnCheckUpdates;
         private System.Windows.Forms.ContextMenuStrip cmsRowMenu;
         private System.Windows.Forms.ToolStripMenuItem tsmiReinstall;
+        private System.Windows.Forms.Button btnUpdateAll;
     }
 }
 

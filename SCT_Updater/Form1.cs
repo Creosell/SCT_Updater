@@ -28,29 +28,33 @@ namespace SCT_Updater
 
         // --- State ---
         private bool _isUpdating = false;
-        private Product _selectedProduct; // For context menu
+        private List<Product> _allProducts = new List<Product>();
 
         public Form1()
         {
             InitializeComponent();
 
+            Log.Info("Application starting up.");
             ServicePointManager.DefaultConnectionLimit = AppConfig.MAX_PARALLEL_DOWNLOADS + 4;
+            Log.Debug($"Connection limit set to {ServicePointManager.DefaultConnectionLimit}");
 
             try
             {
                 AppConfig.LoadEnvConfiguration();
+                Log.Debug(".env configuration loaded.");
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "Failed to load .env configuration.");
                 MessageBox.Show($"Critical error: {ex.Message}", ".env Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
                 return;
             }
 
-            // Initialize services
             _nextcloudClient = new NextcloudClient();
             _localState = new LocalStateService();
             _updateService = new UpdateService(_nextcloudClient, _localState);
+            Log.Debug("Services initialized.");
         }
 
         #region Form Load and UI Setup
@@ -67,16 +71,40 @@ namespace SCT_Updater
 
         private void SetupDataGridView()
         {
+            Log.Debug("Setting up DataGridView columns.");
             dgvModules.AutoGenerateColumns = false;
             dgvModules.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvModules.RowHeadersVisible = false;
             dgvModules.AllowUserToAddRows = false;
             dgvModules.AllowUserToDeleteRows = false;
             dgvModules.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+
+            // --- Columns ---
             dgvModules.Columns.Add(new DataGridViewTextBoxColumn { Name = "ModuleName", HeaderText = "Module", DataPropertyName = "Name", ReadOnly = true, FillWeight = 150 });
             dgvModules.Columns.Add(new DataGridViewTextBoxColumn { Name = "Installed", HeaderText = "Installed", DataPropertyName = "InstalledVersion", ReadOnly = true, FillWeight = 70 });
             dgvModules.Columns.Add(new DataGridViewTextBoxColumn { Name = "Available", HeaderText = "Available", DataPropertyName = "LatestVersion", ReadOnly = true, FillWeight = 70 });
             dgvModules.Columns.Add(new DataGridViewTextBoxColumn { Name = "Description", HeaderText = "Description", DataPropertyName = "Description", ReadOnly = true, DefaultCellStyle = new DataGridViewCellStyle { WrapMode = DataGridViewTriState.True }, FillWeight = 200 });
+
+            // --- CHANGE: Re-install column is now a ButtonColumn (Unicode) ---
+            var reloadColumn = new DataGridViewButtonColumn
+            {
+                Name = "ReinstallAction",
+                HeaderText = "",
+                Text = "⟳", // Default text
+                UseColumnTextForButtonValue = false,
+                Width = 40,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+                FillWeight = 30,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Font = new Font(dgvModules.Font.FontFamily, 12, FontStyle.Bold),
+                    Alignment = DataGridViewContentAlignment.MiddleCenter,
+                    Padding = new Padding(0)
+                }
+            };
+            dgvModules.Columns.Add(reloadColumn);
+
+            // --- Update/Install column ---
             dgvModules.Columns.Add(new DataGridViewButtonColumn { Name = "UpdateAction", HeaderText = "", Text = "Update", UseColumnTextForButtonValue = false, FillWeight = 60 });
         }
 
@@ -84,9 +112,6 @@ namespace SCT_Updater
 
         #region Update Check and UI State
 
-        /// <summary>
-        /// Main wrapper for checking updates and handling self-update.
-        /// </summary>
         private async Task RunUpdateCheck()
         {
             SetUiState(isChecking: true);
@@ -97,29 +122,31 @@ namespace SCT_Updater
 
                 if (result.SelfUpdateProduct != null)
                 {
-                    // A self-update is required.
+                    Log.Warn("Self-update required. Triggering.");
                     lblStatus.Text = "Updating the updater...";
                     MessageBox.Show($"A new version of the updater ({result.SelfUpdateProduct.LatestVersion}) is required. The application will now restart.", "Update Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    var statusProgress = new Progress<string>(status => lblStatus.Text = status);
-                    var percentProgress = new Progress<int>(percent => progressBar.Value = percent);
+                    // --- FIX: Use IProgress<T> interface ---
+                    IProgress<string> statusProgress = new Progress<string>(status => lblStatus.Text = status);
+                    IProgress<int> percentProgress = new Progress<int>(percent => UpdateProgressBar(percent));
 
                     await _updateService.StartSelfUpdateAsync(result.SelfUpdateProduct, statusProgress, percentProgress);
 
-                    // Launch the stub and exit
                     LaunchStubAndExit();
                     return;
                 }
 
-                // No self-update, just refresh the module list
-                BindingSource bs = new BindingSource { DataSource = result.ProductsToShow };
+                _allProducts = result.ProductsToShow;
+                BindingSource bs = new BindingSource { DataSource = _allProducts };
                 dgvModules.DataSource = bs;
                 UpdateRowButtons();
                 lblStatus.Text = "Update check complete.";
+                Log.Debug("Update check finished. UI refreshed.");
             }
             catch (Exception ex)
             {
                 lblStatus.Text = "Error checking updates.";
+                Log.Error(ex, "Failed to check for updates.");
                 MessageBox.Show($"Could not check for updates: {ex.Message}\n\nURL: {AppConfig.SUITE_MANIFEST_URL}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -136,30 +163,60 @@ namespace SCT_Updater
 
         private void SetUiState(bool isChecking)
         {
+            Log.Debug($"Setting UI state: isUpdating = {isChecking}");
             _isUpdating = isChecking;
             btnCheckUpdates.Enabled = !isChecking;
+            btnUpdateAll.Enabled = !isChecking;
             dgvModules.Enabled = !isChecking;
         }
 
+
         private void UpdateRowButtons()
         {
+            Log.Debug("Updating all row buttons...");
+            string reloadSymbol = "⟳";
+
             foreach (DataGridViewRow row in dgvModules.Rows)
             {
                 Product product = row.DataBoundItem as Product;
                 if (product != null)
                 {
-                    var buttonCell = row.Cells["UpdateAction"] as DataGridViewButtonCell;
+                    var updateButtonCell = row.Cells["UpdateAction"] as DataGridViewButtonCell;
+                    var reinstallCell = row.Cells["ReinstallAction"] as DataGridViewButtonCell;
+
+                    // 1. Configure "UpdateAction" (Install/Update/Checkmark) button
                     if (product.IsUpdateAvailable)
                     {
-                        buttonCell.Value = (product.InstalledVersion == "Not Installed") ? "Install" : "Update";
-                        buttonCell.Style.BackColor = Color.LightGreen;
-                        buttonCell.Style.ForeColor = Color.Black;
+                        updateButtonCell.Value = (product.InstalledVersion == "Not Installed") ? "Install" : "Update";
+                        updateButtonCell.Style.BackColor = Color.LightGreen;
+                        updateButtonCell.Style.ForeColor = Color.Black;
+                        updateButtonCell.FlatStyle = FlatStyle.Popup;
                     }
                     else
                     {
-                        buttonCell.Value = "✓";
-                        buttonCell.Style.BackColor = Color.LightGray;
-                        buttonCell.Style.ForeColor = Color.DarkGray;
+                        // Use checkmark "✓" as requested
+                        updateButtonCell.Value = "✓";
+                        updateButtonCell.Style.BackColor = Color.LightGray;
+                        updateButtonCell.Style.ForeColor = Color.DarkGray;
+                        updateButtonCell.FlatStyle = FlatStyle.Flat;
+                    }
+
+                    // 2. Configure "ReinstallAction" (Reload) button
+                    if (product.InstalledVersion == "Not Installed")
+                    {
+                        // Use inactive symbol
+                        reinstallCell.Value = reloadSymbol;
+                        reinstallCell.Style.BackColor = SystemColors.Control;
+                        reinstallCell.Style.ForeColor = Color.Gainsboro; // Very light gray
+                        reinstallCell.FlatStyle = FlatStyle.Flat;
+                    }
+                    else
+                    {
+                        // Show the active reload symbol
+                        reinstallCell.Value = reloadSymbol;
+                        reinstallCell.Style.BackColor = SystemColors.Control;
+                        reinstallCell.Style.ForeColor = Color.Black;
+                        reinstallCell.FlatStyle = FlatStyle.Popup;
                     }
                 }
             }
@@ -171,128 +228,172 @@ namespace SCT_Updater
 
         private async void btnCheckUpdates_Click(object sender, EventArgs e)
         {
+            Log.Info("'Check for Updates' button clicked.");
             lblStatus.Text = "Checking for updates...";
             await RunUpdateCheck();
         }
 
-        private async void dgvModules_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private async void btnUpdateAll_Click(object sender, EventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex != dgvModules.Columns["UpdateAction"].Index) return;
-            if (_isUpdating)
+            Log.Info("'Update All' button clicked.");
+            var productsToUpdate = _allProducts.Where(p => p.IsUpdateAvailable).ToList();
+            if (!productsToUpdate.Any())
             {
-                MessageBox.Show("Another update is already in progress.", "Please Wait", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Log.Debug("No updates available to install.");
+                MessageBox.Show("All modules are already up-to-date.", "Nothing to do", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            Product productToUpdate = dgvModules.Rows[e.RowIndex].DataBoundItem as Product;
-            if (productToUpdate == null || !productToUpdate.IsUpdateAvailable) return;
-
+            Log.Debug($"Found {productsToUpdate.Count} modules to update.");
             SetUiState(isChecking: true);
-            lblStatus.Text = $"Starting update for {productToUpdate.Name}...";
-            progressBar.Style = ProgressBarStyle.Blocks;
-            progressBar.Value = 0;
+            lblStatus.Text = "Starting batch update...";
 
-            // Setup progress reporting
-            var statusProgress = new Progress<string>(status => lblStatus.Text = status);
-            var percentProgress = new Progress<int>(percent => progressBar.Value = percent);
-
-            try
+            foreach (var product in productsToUpdate)
             {
-                FileManifest manifest = await _nextcloudClient.GetFileManifestAsync(productToUpdate.ManifestUrl);
-
-                if (manifest.PackageMode == "zip")
-                {
-                    await _updateService.StartModuleUpdate_Zip(manifest, statusProgress, percentProgress);
-                }
-                else
-                {
-                    await _updateService.StartModuleUpdate_Files(manifest, statusProgress, percentProgress);
-                }
-
-                // Update local state
-                _localState.SaveLocalVersion(productToUpdate.Id, productToUpdate.LatestVersion);
-
-                // Refresh grid
-                productToUpdate.InstalledVersion = productToUpdate.LatestVersion;
-                productToUpdate.IsUpdateAvailable = false;
-                (dgvModules.DataSource as BindingSource).ResetCurrentItem();
-                UpdateRowButtons();
+                Log.Debug($"Batch updating: {product.Id}");
+                lblStatus.Text = $"Updating {product.Name}...";
+                await RunUpdateTask(product, isReinstall: false);
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to update {productToUpdate.Name}: {ex.Message}", "Update Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                SetUiState(isChecking: false);
-                lblStatus.Text = "Ready.";
-                progressBar.Style = ProgressBarStyle.Blocks;
-                progressBar.Value = 0;
-            }
+
+            lblStatus.Text = "All updates complete.";
+            Log.Info("Batch update complete.");
+            SetUiState(isChecking: false);
         }
 
-        #endregion
-
-        #region Context Menu Handlers
-
-        private void cmsRowMenu_Opening(object sender, CancelEventArgs e)
+        private async void dgvModules_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            var mousePos = dgvModules.PointToClient(Cursor.Position);
-            var hitTest = dgvModules.HitTest(mousePos.X, mousePos.Y);
+            if (e.RowIndex < 0 || _isUpdating) return;
 
-            if (hitTest.Type == DataGridViewHitTestType.Cell && hitTest.RowIndex >= 0)
+            Product productToUpdate = dgvModules.Rows[e.RowIndex].DataBoundItem as Product;
+            if (productToUpdate == null) return;
+
+            bool isReinstall = false;
+
+            if (e.ColumnIndex == dgvModules.Columns["UpdateAction"].Index)
             {
-                _selectedProduct = dgvModules.Rows[hitTest.RowIndex].DataBoundItem as Product;
-                tsmiReinstall.Enabled = (_selectedProduct != null && _selectedProduct.InstalledVersion != "Not Installed");
+                if (!productToUpdate.IsUpdateAvailable)
+                {
+                    Log.Debug("Clicked on '✓' (Up-to-date) button. Ignoring.");
+                    return;
+                }
+                Log.Info($"'Update/Install' button clicked for {productToUpdate.Id}");
+                isReinstall = false;
+            }
+            else if (e.ColumnIndex == dgvModules.Columns["ReinstallAction"].Index)
+            {
+                if (productToUpdate.InstalledVersion == "Not Installed")
+                {
+                    Log.Debug("Clicked on inactive 'Re-install' icon. Ignoring.");
+                    return; // Clicked on inactive icon
+                }
+
+                Log.Info($"'Re-install' button clicked for {productToUpdate.Id}");
+                var confirm = MessageBox.Show(
+                    $"Are you sure you want to re-install '{productToUpdate.Name}'?\n" +
+                    "This will delete all its local files and download the latest version.",
+                    "Confirm Re-install",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+                if (confirm == DialogResult.No)
+                {
+                    Log.Debug("User cancelled re-install.");
+                    return;
+                }
+
+                isReinstall = true;
             }
             else
             {
-                _selectedProduct = null;
-                e.Cancel = true;
+                return; // Clicked on a text cell
             }
-        }
-
-        private async void tsmiReinstall_Click(object sender, EventArgs e)
-        {
-            if (_selectedProduct == null || _isUpdating) return;
-
-            var confirm = MessageBox.Show(
-                $"Are you sure you want to re-install '{_selectedProduct.Name}'?\n" +
-                "This will mark the module as uninstalled, allowing you to download it again.",
-                "Confirm Re-install",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
-
-            if (confirm == DialogResult.No) return;
 
             SetUiState(isChecking: true);
-            lblStatus.Text = $"Preparing to re-install {_selectedProduct.Name}...";
+            await RunUpdateTask(productToUpdate, isReinstall);
+            SetUiState(isChecking: false);
+        }
+
+        private async Task RunUpdateTask(Product product, bool isReinstall)
+        {
+            string action = isReinstall ? "Re-installing" : "Updating";
+            Log.Debug($"Starting task '{action}' for {product.Id} v{product.LatestVersion}");
+            lblStatus.Text = isReinstall ? $"Re-installing {product.Name}..." : $"Starting {product.Name}...";
+            progressBar.Style = ProgressBarStyle.Blocks;
+            progressBar.Value = 0;
+
+            IProgress<string> statusProgress = new Progress<string>(status => lblStatus.Text = status);
+            IProgress<int> percentProgress = new Progress<int>(percent => UpdateProgressBar(percent));
+
+            bool success = false;
 
             try
             {
-                // Simple way: Remove from local_versions.json
-                _localState.SaveLocalVersion(_selectedProduct.Id, "Not Installed");
+                if (isReinstall)
+                {
+                    await _updateService.ReinstallModuleAsync(product, statusProgress, percentProgress);
+                }
+                else
+                {
+                    FileManifest manifest = await _nextcloudClient.GetFileManifestAsync(product.Id, product.LatestVersion);
 
-                // Force a full re-check
-                lblStatus.Text = "Refreshing product list...";
-                await RunUpdateCheck();
+                    if (manifest.PackageMode == "zip")
+                    {
+                        Log.Debug("Task mode: ZIP");
+                        _updateService.DeleteModuleFilesFromManifest(manifest); // Clean install
+                        await _updateService.StartModuleUpdate_Zip(manifest, statusProgress, percentProgress);
+                    }
+                    else
+                    {
+                        Log.Debug("Task mode: FILES (Delta)");
+                        await _updateService.RunDeltaUpdateAsync(product, statusProgress, percentProgress);
+                    }
+                }
 
-                lblStatus.Text = $"Ready to re-install '{_selectedProduct.Name}'. Click 'Install'.";
+                // If we got here, it worked.
+                success = true;
+                Log.Info($"Task '{action}' for {product.Id} successful.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error during re-install prep: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Log.Error(ex, $"Task '{action}' for {product.Id} failed.");
+                MessageBox.Show($"Failed to {action.ToLower()} {product.Name}: {ex.Message}", "Task Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Re-check state on failure
+                await RunUpdateCheck();
             }
             finally
             {
+                // --- NEW UI REFRESH LOGIC ---
+                // This block now runs AFTER the try/catch is fully complete.
+
+                if (success)
+                {
+                    // 1. Update the data object
+                    _localState.SaveLocalVersion(product.Id, product.LatestVersion);
+                    product.InstalledVersion = product.LatestVersion;
+                    product.IsUpdateAvailable = false;
+                }
+
+                // 2. Force the BindingSource to re-read the *entire* list
+                (dgvModules.DataSource as BindingSource)?.ResetBindings(false);
+
+                // 3. Update button styles
+                UpdateRowButtons();
+
+                // 4. Set the final status
+                lblStatus.Text = success ? "Ready." : "Task failed.";
+                progressBar.Value = 0;
+
+                // 5. Re-enable the UI
                 SetUiState(isChecking: false);
             }
         }
 
         #endregion
 
+        #region Helper Methods (Stub, UI)
+
         private void LaunchStubAndExit()
         {
+            Log.Warn("Launching update stub and exiting application.");
             string exeName = Path.GetFileName(Application.ExecutablePath);
             string currentDir = Application.StartupPath;
 
@@ -306,5 +407,25 @@ namespace SCT_Updater
 
             Application.Exit();
         }
+
+        private void UpdateProgressBar(int percent)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke((MethodInvoker)delegate {
+                    if (percent > progressBar.Maximum) percent = progressBar.Maximum;
+                    if (percent < progressBar.Minimum) percent = progressBar.Minimum;
+                    progressBar.Value = percent;
+                });
+            }
+            else
+            {
+                if (percent > progressBar.Maximum) percent = progressBar.Maximum;
+                if (percent < progressBar.Minimum) percent = progressBar.Minimum;
+                progressBar.Value = percent;
+            }
+        }
+
+        #endregion
     }
 }

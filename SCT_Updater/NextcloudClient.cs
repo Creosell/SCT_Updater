@@ -23,6 +23,7 @@ namespace SCT_Updater
             var authToken = System.Text.Encoding.UTF8.GetBytes($"{AppConfig.NC_USER}:{AppConfig.NC_PASSWORD}");
             var headerValue = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(authToken));
             client.DefaultRequestHeaders.Authorization = headerValue;
+            Log.Debug("HttpClient created with Basic Auth.");
             return client;
         }
 
@@ -45,24 +46,39 @@ namespace SCT_Updater
 
         public async Task<SuiteManifest> GetSuiteManifestAsync()
         {
+            Log.Debug($"Fetching suite manifest: {AppConfig.SUITE_MANIFEST_URL}");
             string json = await _httpClient.GetStringAsync(AppConfig.SUITE_MANIFEST_URL);
             return JsonConvert.DeserializeObject<SuiteManifest>(json);
         }
 
-        public async Task<FileManifest> GetFileManifestAsync(string manifestUrl)
+        /// <summary>
+        /// CHANGED: This method now constructs the URL from productId and version
+        /// based on the convention.
+        /// </summary>
+        public async Task<FileManifest> GetFileManifestAsync(string productId, string version)
         {
-            string fullManifestUrl = $"{AppConfig.NC_WEBDAV_BASE_URL}/{manifestUrl}";
+            // Build the path and filename based on the new convention
+            // e.g., versions/nextcloud_cli/nextcloud_cli_1.0.2.json
+            string manifestName = $"{productId}_{version}.json";
+            string manifestPath = $"versions/{productId}/{manifestName}";
+
+            // AppConfig.NC_WEBDAV_BASE_URL is ".../SCT/Updater"
+            string fullManifestUrl = $"{AppConfig.NC_WEBDAV_BASE_URL}/{manifestPath}";
+
+            Log.Debug($"Fetching file manifest: {fullManifestUrl}");
             string json = await _httpClient.GetStringAsync(fullManifestUrl);
             return JsonConvert.DeserializeObject<FileManifest>(json);
         }
 
         public async Task<byte[]> DownloadFileBytesAsync(string fileUrl)
         {
+            Log.Debug($"Downloading bytes: {fileUrl}");
             return await _httpClient.GetByteArrayAsync(fileUrl);
         }
 
         public async Task DownloadFileAsync(string fileUrl, string tempPath, IProgress<int> progress)
         {
+            Log.Debug($"Downloading file (stream): {fileUrl}");
             using (HttpResponseMessage response = await _httpClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 response.EnsureSuccessStatusCode();
@@ -84,6 +100,7 @@ namespace SCT_Updater
                     }
                 }
             }
+            Log.Debug($"File download complete: {fileUrl}");
         }
     }
 }

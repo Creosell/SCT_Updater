@@ -24,6 +24,7 @@ namespace SCT_Updater
 
         public static void CreateUpdateStub(string currentDir, string tempDir, string exeName)
         {
+            // ... (code remains the same)
             string stubPath = Path.Combine(currentDir, AppConfig.UPDATE_STUB_FILENAME);
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("@echo off");
@@ -39,6 +40,29 @@ namespace SCT_Updater
             sb.AppendLine("echo Self-deleting stub...");
             sb.AppendLine($"(goto) 2>nul & del \"{stubPath}\"");
             File.WriteAllText(stubPath, sb.ToString());
+        }
+
+        /// <summary>
+        /// NEW: Public helper to safely delete a file or directory.
+        /// </summary>
+        public static void DeletePath(string fullPath)
+        {
+            try
+            {
+                if (File.Exists(fullPath))
+                {
+                    File.Delete(fullPath);
+                }
+                else if (Directory.Exists(fullPath))
+                {
+                    Directory.Delete(fullPath, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Throw a specific error that the UI can catch
+                throw new IOException($"Failed to delete '{fullPath}'. Close the module if it is running. Error: {ex.Message}", ex);
+            }
         }
     }
 }
