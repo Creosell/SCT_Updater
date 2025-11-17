@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("SCT_Updater")]
-[assembly: AssemblyCopyright("Copyright ©  2025")]
+[assembly: AssemblyCopyright("© 2025 Pavel Sheshko, Sberdevices China")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

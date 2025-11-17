@@ -1,0 +1,12 @@
+{
+  "product_id": "measurement_program",
+  "version": "1.1.0",
+  "base_url": "versions/measurement_program/1.1.0",
+  "package_mode": "files",
+  "files": [
+    {
+      "path": "WPF LCD Test.exe",
+      "hash": "acb828e5d0542bb9e88b6e7da9b3a043b71915d237fa98db9cffe0926cf5c522"
+    }
+  ]
+}

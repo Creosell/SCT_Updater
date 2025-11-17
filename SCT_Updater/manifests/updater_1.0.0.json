@@ -1,0 +1,16 @@
+{
+  "product_id": "updater",
+  "version": "1.0.0",
+  "base_url": "versions/updater/1.0.0",
+  "package_mode": "files",
+  "files": [
+    {
+      "path": ".env",
+      "hash": "bb7cd832d6aefc1f11fe7951f5ed18d37b8cf081a2e4b5e729c28b3226d00b05"
+    },
+    {
+      "path": "Updater.exe",
+      "hash": "375a2629e5b9bbe5430185056e9b6d4a01d01d21619798fc4d35417d9281d1e5"
+    }
+  ]
+}
