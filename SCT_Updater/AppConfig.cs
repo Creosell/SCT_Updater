@@ -13,8 +13,13 @@ namespace SCT_Updater
         public const string UPDATE_STUB_FILENAME = "update_stub.bat";
         public const int MAX_PARALLEL_DOWNLOADS = 20;
 
+        // --- NEW: Config Constants ---
+        public const string LOCAL_DEVICE_CONFIGS_PATH = "config/device_configs";
+        public const string DEVICE_CONFIGS_ID = "device_configs";
+
         // --- Nextcloud Path ---
         private const string NC_FILES_PATH = "/SCT/Updater";
+        private const string NC_DEVICE_CONFIGS_PATH_SUFFIX = "/device_configs"; // NEW
 
         // --- Loaded from .env ---
         public static string NC_USER { get; private set; }
@@ -24,6 +29,7 @@ namespace SCT_Updater
         // --- Derived properties ---
         public static string NC_WEBDAV_BASE_URL { get; private set; }
         public static string SUITE_MANIFEST_URL { get; private set; }
+        public static string NC_DEVICE_CONFIGS_URL { get; private set; } // NEW
 
         public static void LoadEnvConfiguration()
         {
@@ -52,6 +58,7 @@ namespace SCT_Updater
             // Set derived properties
             NC_WEBDAV_BASE_URL = $"{NC_SERVER_URL}/remote.php/dav/files/{NC_USER}{NC_FILES_PATH}";
             SUITE_MANIFEST_URL = $"{NC_WEBDAV_BASE_URL}/suite_manifest.json";
+            NC_DEVICE_CONFIGS_URL = $"{NC_WEBDAV_BASE_URL}{NC_DEVICE_CONFIGS_PATH_SUFFIX}"; // NEW
         }
     }
 }

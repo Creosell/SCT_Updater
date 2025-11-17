@@ -26,20 +26,57 @@ namespace SCT_Updater
         public async Task<UpdateCheckResult> CheckForUpdatesAsync(string currentVersion)
         {
             Log.Debug("Checking for updates...");
-            SuiteManifest suiteManifest = await _nextcloudClient.GetSuiteManifestAsync();
             UpdateCheckResult result = new UpdateCheckResult();
+            var productsToShow = new List<Product>();
+
+            // --- 1. NEW: Check Device Configs First ---
+            Log.Debug("Checking device configs...");
+            try
+            {
+                var serverFiles = await _nextcloudClient.ListFilesAsync(AppConfig.NC_DEVICE_CONFIGS_URL);
+                string localConfigPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DEVICE_CONFIGS_PATH);
+                bool localFolderExists = Directory.Exists(localConfigPath);
+                int localFileCount = 0;
+
+                if (localFolderExists)
+                {
+                    localFileCount = Directory.GetFiles(localConfigPath).Length;
+                }
+
+                var configProduct = new Product
+                {
+                    Id = AppConfig.DEVICE_CONFIGS_ID,
+                    Name = "Device configs",
+                    Description = "Update device configs",
+                    InstalledVersion = "-", // Per request
+                    LatestVersion = "-",    // Per request
+                    IsUpdateAvailable = !localFolderExists || serverFiles.Count > localFileCount
+                };
+                productsToShow.Add(configProduct);
+                Log.Debug($"Config check: Server={serverFiles.Count}, Local={localFileCount}, Update={configProduct.IsUpdateAvailable}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to check device configs. Skipping.");
+                // Optionally create a "failed" product
+                // productsToShow.Add(new Product { Id = AppConfig.DEVICE_CONFIGS_ID, Name = "Device configs", Description = "Error checking configs" });
+            }
+
+            // --- 2. Check Suite Manifest (existing logic) ---
+            Log.Debug("Checking suite manifest...");
+            SuiteManifest suiteManifest = await _nextcloudClient.GetSuiteManifestAsync();
 
             Product self = suiteManifest.Products.FirstOrDefault(p => p.Id == AppConfig.UPDATER_ID);
             if (self != null && self.LatestVersion != currentVersion)
             {
                 Log.Warn($"Self-update required. Current: {currentVersion}, Server: {self.LatestVersion}");
                 result.SelfUpdateProduct = self;
-                return result;
+                return result; // Self-update takes precedence
             }
 
             Log.Debug("Self-update not required. Checking modules.");
             LocalVersions localData = _localState.LoadLocalVersions();
-            var productsToShow = new List<Product>();
+
             foreach (var serverProduct in suiteManifest.Products.Where(p => p.Id != AppConfig.UPDATER_ID))
             {
                 InstalledProduct localProduct = localData.InstalledProducts.FirstOrDefault(p => p.Id == serverProduct.Id);
@@ -55,10 +92,92 @@ namespace SCT_Updater
                 }
                 productsToShow.Add(serverProduct);
             }
+
             result.ProductsToShow = productsToShow;
-            Log.Debug($"Found {productsToShow.Count} modules.");
+            Log.Debug($"Found {productsToShow.Count} total items (configs + modules).");
             return result;
         }
+
+        // --- NEW: Method to sync device configs ---
+        public async Task SyncDeviceConfigsAsync(IProgress<string> statusProgress, IProgress<int> percentProgress)
+        {
+            Log.Info("Starting device config sync...");
+            string localPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DEVICE_CONFIGS_PATH);
+            string serverUrl = AppConfig.NC_DEVICE_CONFIGS_URL;
+
+            // 1. Get server file list
+            statusProgress.Report("Fetching server file list...");
+            percentProgress.Report(0);
+            var serverFiles = await _nextcloudClient.ListFilesAsync(serverUrl);
+            if (!serverFiles.Any())
+            {
+                statusProgress.Report("No configs found on server.");
+                Log.Warn("Device config sync: No files found on server.");
+                percentProgress.Report(100);
+                return;
+            }
+
+            // 2. Ensure local directory exists
+            Directory.CreateDirectory(localPath);
+
+            // 3. Download all files (overwriting)
+            Log.Debug($"Downloading {serverFiles.Count} config files...");
+            int filesDone = 0;
+            var semaphore = new SemaphoreSlim(AppConfig.MAX_PARALLEL_DOWNLOADS);
+            var allTasks = new List<Task>();
+
+            foreach (var fileName in serverFiles)
+            {
+                var downloadTask = Task.Run(async () =>
+                {
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        string fileUrl = $"{serverUrl}/{fileName}";
+                        string localFilePath = Path.Combine(localPath, fileName);
+                        byte[] data = await _nextcloudClient.DownloadFileBytesAsync(fileUrl);
+                        File.WriteAllBytes(localFilePath, data); // Always overwrite
+
+                        int done = Interlocked.Increment(ref filesDone);
+                        percentProgress.Report((int)((double)done / serverFiles.Count * 100));
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, $"Failed to download config file {fileName}");
+                        // Continue with other files
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+                allTasks.Add(downloadTask);
+            }
+
+            statusProgress.Report($"Downloading {serverFiles.Count} config files...");
+            await Task.WhenAll(allTasks);
+
+            percentProgress.Report(100);
+            statusProgress.Report("Config sync complete.");
+            Log.Info("Device config sync complete.");
+        }
+
+        // --- NEW: Method to delete all local configs ---
+        public void DeleteDeviceConfigs()
+        {
+            Log.Info("Deleting local device configs folder...");
+            string localPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DEVICE_CONFIGS_PATH);
+            try
+            {
+                Utility.DeletePath(localPath);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to delete device configs directory.");
+                throw; // Re-throw to be caught by the UI
+            }
+        }
+
 
         public async Task ReinstallModuleAsync(Product product, IProgress<string> statusProgress, IProgress<int> percentProgress)
         {
@@ -104,6 +223,7 @@ namespace SCT_Updater
             Log.Info($"Re-install for {product.Id} complete.");
         }
 
+        // ... (rest of UpdateService.cs remains the same) ...
         public async Task RunDeltaUpdateAsync(Product product, IProgress<string> statusProgress, IProgress<int> percentProgress)
         {
             Log.Info($"Starting delta update for {product.Id}...");

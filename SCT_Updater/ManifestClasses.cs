@@ -20,8 +20,6 @@ namespace SCT_Updater
         public string LatestVersion { get; set; }
         [JsonProperty("description")]
         public string Description { get; set; }
-        [JsonProperty("manifest_url")]
-        public string ManifestUrl { get; set; }
 
         // Local-only fields
         public string InstalledVersion { get; set; } = "Not Installed";

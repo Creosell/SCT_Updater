@@ -47,7 +47,7 @@
             this.dgvModules.Location = new System.Drawing.Point(12, 12);
             this.dgvModules.Name = "dgvModules";
             this.dgvModules.RowHeadersWidth = 51;
-            this.dgvModules.Size = new System.Drawing.Size(776, 182);
+            this.dgvModules.Size = new System.Drawing.Size(776, 239);
             this.dgvModules.TabIndex = 0;
             this.dgvModules.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvModules_CellContentClick);
             // 
@@ -64,7 +64,7 @@
             // 
             // progressBar
             // 
-            this.progressBar.Location = new System.Drawing.Point(12, 244);
+            this.progressBar.Location = new System.Drawing.Point(9, 305);
             this.progressBar.Name = "progressBar";
             this.progressBar.Size = new System.Drawing.Size(776, 23);
             this.progressBar.TabIndex = 1;
@@ -72,7 +72,7 @@
             // lblStatus
             // 
             this.lblStatus.AutoSize = true;
-            this.lblStatus.Location = new System.Drawing.Point(12, 210);
+            this.lblStatus.Location = new System.Drawing.Point(9, 271);
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(44, 16);
             this.lblStatus.TabIndex = 2;
@@ -80,7 +80,7 @@
             // 
             // btnCheckUpdates
             // 
-            this.btnCheckUpdates.Location = new System.Drawing.Point(15, 282);
+            this.btnCheckUpdates.Location = new System.Drawing.Point(12, 343);
             this.btnCheckUpdates.Name = "btnCheckUpdates";
             this.btnCheckUpdates.Size = new System.Drawing.Size(145, 39);
             this.btnCheckUpdates.TabIndex = 3;
@@ -90,7 +90,7 @@
             // 
             // btnUpdateAll
             // 
-            this.btnUpdateAll.Location = new System.Drawing.Point(181, 282);
+            this.btnUpdateAll.Location = new System.Drawing.Point(178, 343);
             this.btnUpdateAll.Name = "btnUpdateAll";
             this.btnUpdateAll.Size = new System.Drawing.Size(145, 39);
             this.btnUpdateAll.TabIndex = 4;
@@ -103,7 +103,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ButtonHighlight;
-            this.ClientSize = new System.Drawing.Size(807, 337);
+            this.ClientSize = new System.Drawing.Size(807, 404);
             this.Controls.Add(this.btnUpdateAll);
             this.Controls.Add(this.btnCheckUpdates);
             this.Controls.Add(this.lblStatus);

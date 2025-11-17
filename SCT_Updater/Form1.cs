@@ -85,7 +85,7 @@ namespace SCT_Updater
             dgvModules.Columns.Add(new DataGridViewTextBoxColumn { Name = "Available", HeaderText = "Available", DataPropertyName = "LatestVersion", ReadOnly = true, FillWeight = 70 });
             dgvModules.Columns.Add(new DataGridViewTextBoxColumn { Name = "Description", HeaderText = "Description", DataPropertyName = "Description", ReadOnly = true, DefaultCellStyle = new DataGridViewCellStyle { WrapMode = DataGridViewTriState.True }, FillWeight = 200 });
 
-            // --- CHANGE: Re-install column is now a ButtonColumn (Unicode) ---
+            // --- Re-install column (using your saved preference) ---
             var reloadColumn = new DataGridViewButtonColumn
             {
                 Name = "ReinstallAction",
@@ -97,7 +97,8 @@ namespace SCT_Updater
                 FillWeight = 30,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
-                    Font = new Font(dgvModules.Font.FontFamily, 12, FontStyle.Bold),
+                    // Using your saved preference
+                    Font = new Font(dgvModules.Font.FontFamily, 18, FontStyle.Bold),
                     Alignment = DataGridViewContentAlignment.MiddleCenter,
                     Padding = new Padding(0)
                 }
@@ -136,7 +137,12 @@ namespace SCT_Updater
                     return;
                 }
 
-                _allProducts = result.ProductsToShow;
+                // NEW: Ensure configs are always first
+                _allProducts = result.ProductsToShow
+                    .OrderBy(p => p.Id == AppConfig.DEVICE_CONFIGS_ID ? 0 : 1)
+                    .ThenBy(p => p.Name)
+                    .ToList();
+
                 BindingSource bs = new BindingSource { DataSource = _allProducts };
                 dgvModules.DataSource = bs;
                 UpdateRowButtons();
@@ -179,11 +185,54 @@ namespace SCT_Updater
             foreach (DataGridViewRow row in dgvModules.Rows)
             {
                 Product product = row.DataBoundItem as Product;
-                if (product != null)
-                {
-                    var updateButtonCell = row.Cells["UpdateAction"] as DataGridViewButtonCell;
-                    var reinstallCell = row.Cells["ReinstallAction"] as DataGridViewButtonCell;
+                if (product == null) continue;
 
+                var updateButtonCell = row.Cells["UpdateAction"] as DataGridViewButtonCell;
+                var reinstallCell = row.Cells["ReinstallAction"] as DataGridViewButtonCell;
+
+                // --- NEW: Handle Device Configs Row ---
+                if (product.Id == AppConfig.DEVICE_CONFIGS_ID)
+                {
+                    string localConfigPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DEVICE_CONFIGS_PATH);
+                    bool localFolderExists = Directory.Exists(localConfigPath) && Directory.GetFiles(localConfigPath).Length > 0;
+
+                    // 1. Configure "UpdateAction" (Install/Update/Checkmark)
+                    if (product.IsUpdateAvailable)
+                    {
+                        updateButtonCell.Value = localFolderExists ? "Update" : "Install";
+                        updateButtonCell.Style.BackColor = Color.LightGreen;
+                        updateButtonCell.Style.ForeColor = Color.Black;
+                        updateButtonCell.FlatStyle = FlatStyle.Popup;
+                    }
+                    else
+                    {
+                        updateButtonCell.Value = "✔";
+                        updateButtonCell.Style.BackColor = Color.LightGray;
+                        updateButtonCell.Style.ForeColor = Color.DarkGray;
+                        updateButtonCell.FlatStyle = FlatStyle.Flat;
+                    }
+
+                    // 2. Configure "ReinstallAction" (Reload)
+                    if (localFolderExists)
+                    {
+                        // Show the active reload symbol
+                        reinstallCell.Value = reloadSymbol;
+                        reinstallCell.Style.BackColor = SystemColors.Control;
+                        reinstallCell.Style.ForeColor = Color.Black;
+                        reinstallCell.FlatStyle = FlatStyle.Popup;
+                    }
+                    else
+                    {
+                        // Use inactive symbol
+                        reinstallCell.Value = reloadSymbol;
+                        reinstallCell.Style.BackColor = SystemColors.Control;
+                        reinstallCell.Style.ForeColor = Color.Gainsboro; // Very light gray
+                        reinstallCell.FlatStyle = FlatStyle.Flat;
+                    }
+                }
+                // --- ELSE: Handle Normal Module Rows ---
+                else
+                {
                     // 1. Configure "UpdateAction" (Install/Update/Checkmark) button
                     if (product.IsUpdateAvailable)
                     {
@@ -194,8 +243,7 @@ namespace SCT_Updater
                     }
                     else
                     {
-                        // Use checkmark "✓" as requested
-                        updateButtonCell.Value = "✓";
+                        updateButtonCell.Value = "✔";
                         updateButtonCell.Style.BackColor = Color.LightGray;
                         updateButtonCell.Style.ForeColor = Color.DarkGray;
                         updateButtonCell.FlatStyle = FlatStyle.Flat;
@@ -248,11 +296,22 @@ namespace SCT_Updater
             SetUiState(isChecking: true);
             lblStatus.Text = "Starting batch update...";
 
-            foreach (var product in productsToUpdate)
+            // NEW: Prioritize configs if they are in the list
+            foreach (var product in productsToUpdate.OrderBy(p => p.Id == AppConfig.DEVICE_CONFIGS_ID ? 0 : 1))
             {
                 Log.Debug($"Batch updating: {product.Id}");
-                lblStatus.Text = $"Updating {product.Name}...";
-                await RunUpdateTask(product, isReinstall: false);
+
+                // NEW: Route to correct handler
+                if (product.Id == AppConfig.DEVICE_CONFIGS_ID)
+                {
+                    lblStatus.Text = $"Updating {product.Name}...";
+                    await RunConfigSyncTask(product, isReinstall: false);
+                }
+                else
+                {
+                    lblStatus.Text = $"Updating {product.Name}...";
+                    await RunUpdateTask(product, isReinstall: false);
+                }
             }
 
             lblStatus.Text = "All updates complete.";
@@ -264,9 +323,18 @@ namespace SCT_Updater
         {
             if (e.RowIndex < 0 || _isUpdating) return;
 
-            Product productToUpdate = dgvModules.Rows[e.RowIndex].DataBoundItem as Product;
-            if (productToUpdate == null) return;
+            Product productClicked = dgvModules.Rows[e.RowIndex].DataBoundItem as Product;
+            if (productClicked == null) return;
 
+            // --- NEW: Route to config handler if clicked ---
+            if (productClicked.Id == AppConfig.DEVICE_CONFIGS_ID)
+            {
+                await HandleConfigSyncClick(productClicked, e.ColumnIndex);
+                return;
+            }
+
+            // --- Existing logic for regular modules ---
+            Product productToUpdate = productClicked;
             bool isReinstall = false;
 
             if (e.ColumnIndex == dgvModules.Columns["UpdateAction"].Index)
@@ -311,6 +379,112 @@ namespace SCT_Updater
             await RunUpdateTask(productToUpdate, isReinstall);
             SetUiState(isChecking: false);
         }
+
+        // --- NEW: Handler for the Device Config row ---
+        private async Task HandleConfigSyncClick(Product configProduct, int columnIndex)
+        {
+            bool isReinstall = false;
+
+            if (columnIndex == dgvModules.Columns["UpdateAction"].Index)
+            {
+                if (!configProduct.IsUpdateAvailable)
+                {
+                    Log.Debug("Clicked on '✓' (Up-to-date) button for configs. Ignoring.");
+                    return;
+                }
+                Log.Info($"'Update/Install' button clicked for {configProduct.Id}");
+                isReinstall = false;
+            }
+            else if (columnIndex == dgvModules.Columns["ReinstallAction"].Index)
+            {
+                string localConfigPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DEVICE_CONFIGS_PATH);
+                if (!Directory.Exists(localConfigPath) || !Directory.GetFiles(localConfigPath).Any())
+                {
+                    Log.Debug("Clicked on inactive 'Re-install' icon for configs. Ignoring.");
+                    return; // Clicked on inactive icon
+                }
+
+                Log.Info($"'Re-install' button clicked for {configProduct.Id}");
+                var confirm = MessageBox.Show(
+                    $"Are you sure you want to re-install 'Device configs'?\n" +
+                    "This will delete all local configs and re-download them from the server.",
+                    "Confirm Re-install",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+                if (confirm == DialogResult.No)
+                {
+                    Log.Debug("User cancelled config re-install.");
+                    return;
+                }
+                isReinstall = true;
+            }
+            else
+            {
+                return; // Clicked on a text cell
+            }
+
+            SetUiState(isChecking: true);
+            await RunConfigSyncTask(configProduct, isReinstall);
+            SetUiState(isChecking: false);
+        }
+
+        // --- NEW: Task runner for config sync ---
+        private async Task RunConfigSyncTask(Product product, bool isReinstall)
+        {
+            string action = isReinstall ? "Re-installing" : "Updating";
+            Log.Debug($"Starting task '{action}' for {product.Id}");
+            lblStatus.Text = $"{action} {product.Name}...";
+            progressBar.Style = ProgressBarStyle.Blocks;
+            progressBar.Value = 0;
+
+            IProgress<string> statusProgress = new Progress<string>(status => lblStatus.Text = status);
+            IProgress<int> percentProgress = new Progress<int>(percent => UpdateProgressBar(percent));
+
+            bool success = false;
+
+            try
+            {
+                if (isReinstall)
+                {
+                    statusProgress.Report("Deleting old configs...");
+                    _updateService.DeleteDeviceConfigs();
+                }
+                await _updateService.SyncDeviceConfigsAsync(statusProgress, percentProgress);
+                success = true;
+                Log.Info($"Task '{action}' for {product.Id} successful.");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Task '{action}' for {product.Id} failed.");
+                MessageBox.Show($"Failed to {action.ToLower()} {product.Name}: {ex.Message}", "Task Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Re-check state on failure
+                await RunUpdateCheck();
+            }
+            finally
+            {
+                if (success)
+                {
+                    // Manually re-check the state to update IsUpdateAvailable
+                    try
+                    {
+                        var serverFiles = await _nextcloudClient.ListFilesAsync(AppConfig.NC_DEVICE_CONFIGS_URL);
+                        string localConfigPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DEVICE_CONFIGS_PATH);
+                        int localFileCount = Directory.Exists(localConfigPath) ? Directory.GetFiles(localConfigPath).Length : 0;
+                        product.IsUpdateAvailable = !Directory.Exists(localConfigPath) || serverFiles.Count > localFileCount;
+                    }
+                    catch { /* Ignore errors here, UI will just be slightly off */ }
+                }
+
+                // Refresh UI
+                (dgvModules.DataSource as BindingSource)?.ResetBindings(false);
+                UpdateRowButtons();
+                lblStatus.Text = success ? "Ready." : "Task failed.";
+                progressBar.Value = 0;
+
+                // Note: SetUiState(false) is called by the *caller* (dgvModules_CellContentClick or btnUpdateAll_Click)
+            }
+        }
+
 
         private async Task RunUpdateTask(Product product, bool isReinstall)
         {
@@ -383,7 +557,7 @@ namespace SCT_Updater
                 progressBar.Value = 0;
 
                 // 5. Re-enable the UI
-                SetUiState(isChecking: false);
+                // Note: SetUiState(false) is called by the *caller* (dgvModules_CellContentClick or btnUpdateAll_Click)
             }
         }
 

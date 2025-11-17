@@ -11,7 +11,7 @@ namespace SCT_Updater
     /// </summary>
     public static class Log
     {
-        private static readonly string _logPath = Path.Combine(Application.StartupPath, "sct_updater.log");
+        private static readonly string _logPath = Path.Combine(Application.StartupPath, "logs/sct_updater.log");
         private static readonly object _lock = new object();
 
         static Log()

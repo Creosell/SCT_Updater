@@ -1,10 +1,13 @@
 ﻿// NextcloudClient.cs
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic; // NEW
 using System.IO;
 using System.Net.Http;
+using System.Text; // NEW
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Linq; // NEW
 
 namespace SCT_Updater
 {
@@ -26,6 +29,63 @@ namespace SCT_Updater
             Log.Debug("HttpClient created with Basic Auth.");
             return client;
         }
+
+        /// <summary>
+        /// NEW: Lists all files (not directories) in a specific WebDAV folder.
+        /// </summary>
+        public async Task<List<string>> ListFilesAsync(string directoryUrl)
+        {
+            Log.Debug($"Listing files (PROPFIND) for: {directoryUrl}");
+            var fileNames = new List<string>();
+
+            using (var request = new HttpRequestMessage(new HttpMethod("PROPFIND"), directoryUrl))
+            {
+                request.Headers.Add("Depth", "1");
+
+                // This XML requests the 'resourcetype' property to distinguish files from folders
+                const string requestBody = "<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/></d:prop></d:propfind>";
+                request.Content = new StringContent(requestBody, Encoding.UTF8, "application/xml");
+
+                HttpResponseMessage response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                string xmlResponse = await response.Content.ReadAsStringAsync();
+                XDocument xDoc = XDocument.Parse(xmlResponse);
+                XNamespace d = "DAV:";
+
+                var responses = xDoc.Descendants(d + "response");
+
+                foreach (var resp in responses)
+                {
+                    string href = resp.Element(d + "href")?.Value;
+                    if (string.IsNullOrEmpty(href)) continue;
+
+                    string decodedHref = Uri.UnescapeDataString(href);
+
+                    // Skip the directory itself (which is always returned)
+                    if (decodedHref.EndsWith("/") || decodedHref.EndsWith(AppConfig.NC_DEVICE_CONFIGS_URL.Substring(AppConfig.NC_DEVICE_CONFIGS_URL.LastIndexOf('/'))))
+                    {
+                        continue;
+                    }
+
+                    // Check if it's a file (resourcetype will not have d:collection)
+                    var resType = resp.Element(d + "propstat")?.Element(d + "prop")?.Element(d + "resourcetype");
+                    if (resType != null && resType.Element(d + "collection") == null)
+                    {
+                        // It's a file. Get its name.
+                        string fileName = Path.GetFileName(decodedHref);
+                        if (!string.IsNullOrEmpty(fileName))
+                        {
+                            fileNames.Add(fileName);
+                        }
+                    }
+                }
+            }
+
+            Log.Debug($"Found {fileNames.Count} files in {directoryUrl}");
+            return fileNames;
+        }
+
 
         public string BuildFullFileUrl(string baseUrl, string filePath)
         {
@@ -102,5 +162,6 @@ namespace SCT_Updater
             }
             Log.Debug($"File download complete: {fileUrl}");
         }
+
     }
 }
