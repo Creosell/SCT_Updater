@@ -1,13 +1,13 @@
 ﻿// NextcloudClient.cs
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic; // NEW
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Text; // NEW
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Xml.Linq; // NEW
+using System.Xml.Linq;
 
 namespace SCT_Updater
 {
@@ -31,7 +31,64 @@ namespace SCT_Updater
         }
 
         /// <summary>
-        /// NEW: Lists all files (not directories) in a specific WebDAV folder.
+        /// NEW: Lists all files recursively (including sub-directories) in a WebDAV folder.
+        /// Returns a list of relative file paths.
+        /// </summary>
+        public async Task<List<string>> ListAllFilesRecursiveAsync(string baseFolderUrl)
+        {
+            Log.Debug($"Listing all files recursively (PROPFIND Depth: infinity) for: {baseFolderUrl}");
+            var relativeFilePaths = new List<string>();
+            string baseFolderPath = new Uri(baseFolderUrl).AbsolutePath;
+
+            using (var request = new HttpRequestMessage(new HttpMethod("PROPFIND"), baseFolderUrl))
+            {
+                // Use "infinity" to scan all sub-folders
+                request.Headers.Add("Depth", "infinity");
+
+                const string requestBody = "<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/></d:prop></d:propfind>";
+                request.Content = new StringContent(requestBody, Encoding.UTF8, "application/xml");
+
+                HttpResponseMessage response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                string xmlResponse = await response.Content.ReadAsStringAsync();
+                XDocument xDoc = XDocument.Parse(xmlResponse);
+                XNamespace d = "DAV:";
+
+                var responses = xDoc.Descendants(d + "response");
+
+                foreach (var resp in responses)
+                {
+                    string href = resp.Element(d + "href")?.Value;
+                    if (string.IsNullOrEmpty(href)) continue;
+
+                    // Check if it's a file (resourcetype will not have d:collection)
+                    var resType = resp.Element(d + "propstat")?.Element(d + "prop")?.Element(d + "resourcetype");
+                    if (resType != null && resType.Element(d + "collection") == null)
+                    {
+                        string decodedHref = Uri.UnescapeDataString(href);
+
+                        // --- FIX: Use the string path directly ---
+                        // The server is returning a relative path, not a full URI.
+                        // string hrefPath = new Uri(decodedHref, UriKind.RelativeOrAbsolute).AbsolutePath; // <--- OLD (CRASHES)
+                        string hrefPath = decodedHref; // <--- NEW (CORRECT)
+
+                        // Calculate relative path
+                        if (hrefPath.StartsWith(baseFolderPath) && hrefPath.Length > baseFolderPath.Length)
+                        {
+                            string relativePath = hrefPath.Substring(baseFolderPath.Length).TrimStart('/');
+                            relativeFilePaths.Add(relativePath);
+                        }
+                    }
+                }
+            }
+
+            Log.Debug($"Found {relativeFilePaths.Count} files recursively in {baseFolderUrl}");
+            return relativeFilePaths;
+        }
+
+        /// <summary>
+        /// Lists all files (not directories) in a specific WebDAV folder.
         /// </summary>
         public async Task<List<string>> ListFilesAsync(string directoryUrl)
         {
@@ -63,7 +120,9 @@ namespace SCT_Updater
                     string decodedHref = Uri.UnescapeDataString(href);
 
                     // Skip the directory itself (which is always returned)
-                    if (decodedHref.EndsWith("/") || decodedHref.EndsWith(AppConfig.NC_DEVICE_CONFIGS_URL.Substring(AppConfig.NC_DEVICE_CONFIGS_URL.LastIndexOf('/'))))
+                    // --- FIX: Use Substring to get the last part of the URL for comparison ---
+                    string lastPart = directoryUrl.Substring(directoryUrl.LastIndexOf('/'));
+                    if (decodedHref.EndsWith("/") || decodedHref.EndsWith(lastPart))
                     {
                         continue;
                     }

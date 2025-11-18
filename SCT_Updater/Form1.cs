@@ -59,6 +59,7 @@ namespace SCT_Updater
 
         #region Form Load and UI Setup
 
+
         private async void Form1_Load(object sender, EventArgs e)
         {
             lblStatus.Text = "Configuring UI...";
@@ -273,6 +274,61 @@ namespace SCT_Updater
         #endregion
 
         #region Button Click Handlers
+
+        /// <summary>
+        /// NEW: Handles click for the "Install drivers and frameworks" menu item.
+        /// </summary>
+        private async void installDrivers_Click(object sender, EventArgs e)
+        {
+            if (_isUpdating)
+            {
+                MessageBox.Show("Another update is already in progress. Please wait.", "Busy", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                "This will download and install all required drivers and frameworks.\n\n" +
+                "This process may require administrator permissions and take several minutes. Continue?",
+                "Confirm Installation",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information);
+
+            if (confirm == DialogResult.No)
+            {
+                Log.Debug("User canceled driver installation.");
+                return;
+            }
+
+            Log.Info("'Install drivers' menu item clicked.");
+            SetUiState(isChecking: true); // Lock UI
+
+            lblStatus.Text = "Starting driver download...";
+            progressBar.Style = ProgressBarStyle.Blocks;
+            progressBar.Value = 0;
+
+            IProgress<string> statusProgress = new Progress<string>(status => lblStatus.Text = status);
+            IProgress<int> percentProgress = new Progress<int>(percent => UpdateProgressBar(percent));
+
+            try
+            {
+                await _updateService.InstallDriversAsync(statusProgress, percentProgress);
+
+                lblStatus.Text = "Driver installation complete.";
+                progressBar.Value = 0;
+                MessageBox.Show("Driver and framework installation finished.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Driver installation failed.");
+                lblStatus.Text = "Installation failed.";
+                progressBar.Value = 0;
+                MessageBox.Show($"Driver installation failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                SetUiState(isChecking: false); // Unlock UI
+            }
+        }
 
         private async void btnCheckUpdates_Click(object sender, EventArgs e)
         {

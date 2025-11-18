@@ -1,5 +1,6 @@
 ﻿// Utility.cs
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -62,6 +63,50 @@ namespace SCT_Updater
             {
                 // Throw a specific error that the UI can catch
                 throw new IOException($"Failed to delete '{fullPath}'. Close the module if it is running. Error: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// NEW: Executes a batch file, requesting Admin privileges.
+        /// </summary>
+        public static void ExecuteBatchFile(string batchFilePath)
+        {
+            Log.Debug($"Executing batch file: {batchFilePath}");
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/C \"{batchFilePath}\"", // /C carries out the command and then terminates
+                    Verb = "runas", // Request admin elevation
+                    UseShellExecute = true,
+                    WorkingDirectory = Path.GetDirectoryName(batchFilePath)
+                };
+
+                using (Process process = Process.Start(psi))
+                {
+                    process.WaitForExit(); // Wait for the installer to finish
+                    Log.Debug($"Batch file execution finished with exit code {process.ExitCode}.");
+                }
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                // 1223: The operation was canceled by the user (UAC prompt denied).
+                if (ex.NativeErrorCode == 1223)
+                {
+                    Log.Warn("Driver installation was canceled by the user (UAC prompt).");
+                    MessageBox.Show("Installation was canceled by the user.", "Canceled", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else
+                {
+                    Log.Error(ex, "Failed to execute batch file.");
+                    throw new Exception($"Failed to run installer: {ex.Message}", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to execute batch file.");
+                throw new Exception($"Failed to run installer: {ex.Message}", ex);
             }
         }
     }

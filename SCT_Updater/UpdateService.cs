@@ -50,7 +50,7 @@ namespace SCT_Updater
                     Description = "Update device configs",
                     InstalledVersion = "-", // Per request
                     LatestVersion = "-",    // Per request
-                    IsUpdateAvailable = !localFolderExists || serverFiles.Count > localFileCount
+                    IsUpdateAvailable = !localFolderExists || serverFiles.Count != localFileCount
                 };
                 productsToShow.Add(configProduct);
                 Log.Debug($"Config check: Server={serverFiles.Count}, Local={localFileCount}, Update={configProduct.IsUpdateAvailable}");
@@ -109,19 +109,23 @@ namespace SCT_Updater
             statusProgress.Report("Fetching server file list...");
             percentProgress.Report(0);
             var serverFiles = await _nextcloudClient.ListFilesAsync(serverUrl);
+
+            // --- CHANGED: Always clear local directory first for a clean sync ---
+            statusProgress.Report("Clearing local config directory...");
+            DeleteDeviceConfigs(); // This deletes the root folder
+
             if (!serverFiles.Any())
             {
-                statusProgress.Report("No configs found on server.");
-                Log.Warn("Device config sync: No files found on server.");
+                statusProgress.Report("No configs found on server. Local folder cleared.");
+                Log.Warn("Device config sync: No files found on server. Local sync is complete (empty).");
                 percentProgress.Report(100);
-                return;
+                return; // We are done, local folder is now empty, matching server.
             }
 
-            // 2. Ensure local directory exists
-            Directory.CreateDirectory(localPath);
-
-            // 3. Download all files (overwriting)
+            // 3. Re-create directory and download
+            Directory.CreateDirectory(localPath); // Re-create it
             Log.Debug($"Downloading {serverFiles.Count} config files...");
+
             int filesDone = 0;
             var semaphore = new SemaphoreSlim(AppConfig.MAX_PARALLEL_DOWNLOADS);
             var allTasks = new List<Task>();
@@ -531,6 +535,99 @@ namespace SCT_Updater
             await Task.WhenAll(allDownloadTasks);
 
             statusProgress.Report("Download complete.");
+        }
+
+        /// <summary>
+        /// NEW: Downloads the entire /drivers folder and executes the install.bat script.
+        /// </summary>
+        public async Task InstallDriversAsync(IProgress<string> statusProgress, IProgress<int> percentProgress)
+        {
+            Log.Info("Starting driver & framework installation...");
+            string localPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DRIVERS_PATH);
+            string serverUrl = AppConfig.NC_DRIVERS_URL;
+
+            // 1. Clear old drivers directory
+            statusProgress.Report("Clearing old driver files...");
+            percentProgress.Report(0);
+            try
+            {
+                Utility.DeletePath(localPath);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to delete old drivers directory. Aborting.");
+                throw new Exception($"Failed to clear old 'drivers' directory. Close any open files and try again. Error: {ex.Message}", ex);
+            }
+
+            // 2. Get server file list (recursively)
+            statusProgress.Report("Fetching server file list...");
+            var serverFiles = await _nextcloudClient.ListAllFilesRecursiveAsync(serverUrl);
+            if (!serverFiles.Any())
+            {
+                throw new Exception("No files found in the 'drivers' directory on the server.");
+            }
+
+            // 3. Ensure local directory exists
+            Directory.CreateDirectory(localPath);
+
+            // 4. Download all files (overwriting)
+            Log.Debug($"Downloading {serverFiles.Count} driver files...");
+            int filesDone = 0;
+            var semaphore = new SemaphoreSlim(AppConfig.MAX_PARALLEL_DOWNLOADS);
+            var allTasks = new List<Task>();
+
+            foreach (var relativePath in serverFiles)
+            {
+                var downloadTask = Task.Run(async () =>
+                {
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        // Note: relativePath might be "subdir/file.exe", Path.Combine handles this.
+                        string fileUrl = $"{serverUrl}/{relativePath}";
+                        string localFilePath = Path.Combine(localPath, relativePath);
+
+                        // Ensure sub-directory exists
+                        Directory.CreateDirectory(Path.GetDirectoryName(localFilePath));
+
+                        byte[] data = await _nextcloudClient.DownloadFileBytesAsync(fileUrl);
+                        File.WriteAllBytes(localFilePath, data);
+
+                        int done = Interlocked.Increment(ref filesDone);
+                        percentProgress.Report((int)((double)done / serverFiles.Count * 100));
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, $"Failed to download driver file {relativePath}");
+                        // Continue with other files
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+                allTasks.Add(downloadTask);
+            }
+
+            statusProgress.Report($"Downloading {serverFiles.Count} driver files...");
+            await Task.WhenAll(allTasks);
+
+            percentProgress.Report(100);
+            statusProgress.Report("Download complete. Starting installation...");
+            Log.Info("Driver download complete.");
+
+            // 5. Execute batch file
+            string scriptPath = Path.Combine(Application.StartupPath, AppConfig.DRIVER_INSTALL_SCRIPT);
+            if (!File.Exists(scriptPath))
+            {
+                Log.Error(null, $"install.bat not found at {scriptPath}");
+                throw new FileNotFoundException("Driver download complete, but 'install.bat' was not found in the 'drivers' folder.", AppConfig.DRIVER_INSTALL_SCRIPT);
+            }
+
+            await Task.Run(() => Utility.ExecuteBatchFile(scriptPath));
+
+            statusProgress.Report("Installation script finished.");
+            Log.Info("Driver installation script finished.");
         }
     }
 }
