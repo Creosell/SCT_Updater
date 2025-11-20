@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/SCT_Updater/.env
+/SCT_Updater/.env
+/SCT_Updater/release_manager.py
+/SCT_Updater/.env
