@@ -23,10 +23,14 @@ namespace SCT_Updater
         private HttpClient CreateNextcloudHttpClient()
         {
             var client = new HttpClient();
+
+            // Identify the application to reduce heuristic suspicion
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("SCT-Updater/1.0 (+http://your-site.com)");
+
             var authToken = System.Text.Encoding.UTF8.GetBytes($"{AppConfig.NC_USER}:{AppConfig.NC_PASSWORD}");
-            var headerValue = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(authToken));
-            client.DefaultRequestHeaders.Authorization = headerValue;
-            Log.Debug("HttpClient created with Basic Auth.");
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(authToken));
+
+            Log.Debug("HttpClient created with Basic Auth and UA.");
             return client;
         }
 

@@ -2,4 +2,4 @@
  -open a command prompt in the SCT_Updater directory
  -build the project in Release mode
  -run the following command to upload the files, choosing the version:
-	python ./upload.py files .\bin\Release\app.publish\ updater @version --upload
+	uv run .\release_manager.py zip .\bin\Release\app.publish\ updater 1.0.0 --upload

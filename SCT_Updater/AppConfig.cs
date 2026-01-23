@@ -19,7 +19,6 @@ namespace SCT_Updater
 
         // --- NEW: Driver Constants ---
         public const string LOCAL_DRIVERS_PATH = "drivers";
-        public const string DRIVER_INSTALL_SCRIPT = "drivers\\install.bat";
 
         // --- Nextcloud Path ---
         private const string NC_FILES_PATH = "/SCT/Updater";
@@ -51,9 +50,9 @@ namespace SCT_Updater
                 var value = parts[1].Trim().Trim('"');
                 switch (key)
                 {
-                    case "NC_USER": NC_USER = value; break;
-                    case "NC_PASSWORD": NC_PASSWORD = value; break;
-                    case "NC_SERVER_URL": NC_SERVER_URL = value; break;
+                    case "NC_USER_QA": NC_USER = value; break;
+                    case "NC_PASSWORD_QA": NC_PASSWORD = value; break;
+                    case "NC_SERVER_URL_QA": NC_SERVER_URL = value; break;
                 }
             }
 

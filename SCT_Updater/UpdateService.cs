@@ -447,18 +447,17 @@ namespace SCT_Updater
             Directory.CreateDirectory(tempDir);
 
             if (manifest.PackageMode == "zip")
-            {
                 await StartSelfUpdate_Zip(manifest, tempDir, statusProgress, percentProgress);
-            }
             else
-            {
                 await StartSelfUpdate_Files(manifest, tempDir, statusProgress, percentProgress);
-            }
 
             string exeName = Path.GetFileName(Application.ExecutablePath);
             string currentDir = Application.StartupPath;
-            Utility.CreateUpdateStub(currentDir, tempDir, exeName);
-            Log.Warn("Stub created. Service is handing off to Form1 to exit.");
+
+            Log.Warn("Restarting via command line injection...");
+
+            // Use the new fileless method
+            Utility.RestartApp(currentDir, tempDir, exeName);
         }
 
         private async Task StartSelfUpdate_Zip(FileManifest manifest, string tempDir, IProgress<string> statusProgress, IProgress<int> percentProgress)
@@ -542,7 +541,7 @@ namespace SCT_Updater
         /// </summary>
         public async Task InstallDriversAsync(IProgress<string> statusProgress, IProgress<int> percentProgress)
         {
-            Log.Info("Starting driver & framework installation...");
+            Log.Info("Starting driver & framework downloading...");
             string localPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DRIVERS_PATH);
             string serverUrl = AppConfig.NC_DRIVERS_URL;
 
@@ -613,21 +612,8 @@ namespace SCT_Updater
             await Task.WhenAll(allTasks);
 
             percentProgress.Report(100);
-            statusProgress.Report("Download complete. Starting installation...");
             Log.Info("Driver download complete.");
-
-            // 5. Execute batch file
-            string scriptPath = Path.Combine(Application.StartupPath, AppConfig.DRIVER_INSTALL_SCRIPT);
-            if (!File.Exists(scriptPath))
-            {
-                Log.Error(null, $"install.bat not found at {scriptPath}");
-                throw new FileNotFoundException("Driver download complete, but 'install.bat' was not found in the 'drivers' folder.", AppConfig.DRIVER_INSTALL_SCRIPT);
-            }
-
-            await Task.Run(() => Utility.ExecuteBatchFile(scriptPath));
-
-            statusProgress.Report("Installation script finished.");
-            Log.Info("Driver installation script finished.");
+            statusProgress.Report("Drivers are downloaded. Please run install.bat in 'drivers' folder");
         }
     }
 }

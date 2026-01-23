@@ -7,11 +7,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("SCT_Updater")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Updater for Screen Check Tool modules")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Sberdevices China")]
 [assembly: AssemblyProduct("SCT_Updater")]
-[assembly: AssemblyCopyright("© 2025 Pavel Sheshko, Sberdevices China")]
+[assembly: AssemblyCopyright("© 2025 Pavel Sheshko")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

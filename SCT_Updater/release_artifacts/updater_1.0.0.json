@@ -1,0 +1,12 @@
+{
+  "product_id": "updater",
+  "version": "1.0.0",
+  "base_url": "versions/updater/1.0.0",
+  "package_mode": "zip",
+  "files": [
+    {
+      "path": "updater_1.0.0.zip",
+      "hash": "78893628f87e304e97e50223aae720381b46c5d21454f0592f25e3f46eaaeedc"
+    }
+  ]
+}
