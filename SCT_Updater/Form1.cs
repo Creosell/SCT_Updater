@@ -62,6 +62,7 @@ namespace SCT_Updater
 
         private async void Form1_Load(object sender, EventArgs e)
         {
+            this.Text = $"SCT Updater {GetCurrentVersion()}";
             lblStatus.Text = "Configuring UI...";
             SetupDataGridView();
             dgvModules.DataSource = null;
