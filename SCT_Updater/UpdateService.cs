@@ -16,6 +16,22 @@ namespace SCT_Updater
         private readonly NextcloudClient _nextcloudClient;
         private readonly LocalStateService _localState;
 
+        private static readonly Dictionary<string, string[]> _legacyFiles = new Dictionary<string, string[]>
+        {
+            { "screen_checker", new[] { "WPF LCD Test.exe" } }
+        };
+
+        private void CleanupLegacyFiles(string productId)
+        {
+            if (!_legacyFiles.TryGetValue(productId, out string[] files)) return;
+            string root = Application.StartupPath;
+            foreach (string file in files)
+            {
+                Log.Debug($"Removing legacy file: {file}");
+                Utility.DeletePath(Path.Combine(root, file));
+            }
+        }
+
         public UpdateService(NextcloudClient nextcloudClient, LocalStateService localState)
         {
             _nextcloudClient = nextcloudClient;
@@ -306,6 +322,23 @@ namespace SCT_Updater
         public async Task StartModuleUpdate_Zip(FileManifest manifest, IProgress<string> statusProgress, IProgress<int> percentProgress)
         {
             Log.Debug($"Starting ZIP update for {manifest.ProductId}...");
+
+            var localData = _localState.LoadLocalVersions();
+            var installed = localData.InstalledProducts.FirstOrDefault(p => p.Id == manifest.ProductId);
+            if (installed != null && installed.Version != manifest.Version)
+            {
+                try
+                {
+                    statusProgress.Report("Fetching old manifest for cleanup...");
+                    FileManifest oldManifest = await _nextcloudClient.GetFileManifestAsync(manifest.ProductId, installed.Version);
+                    statusProgress.Report("Removing old version files...");
+                    DeleteModuleFilesFromManifest(oldManifest);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn($"Pre-cleanup skipped (old manifest unavailable): {ex.Message}");
+                }
+            }
             var fileToDownload = manifest.Files.FirstOrDefault();
             if (fileToDownload == null) throw new Exception("File manifest is empty.");
 
@@ -361,6 +394,7 @@ namespace SCT_Updater
                 });
                 File.Delete(tempZipPath);
                 Log.Debug("Extraction complete. Temp ZIP deleted.");
+                CleanupLegacyFiles(manifest.ProductId);
             }
             catch (InvalidDataException ex)
             {

@@ -568,7 +568,6 @@ namespace SCT_Updater
                     if (manifest.PackageMode == "zip")
                     {
                         Log.Debug("Task mode: ZIP");
-                        _updateService.DeleteModuleFilesFromManifest(manifest); // Clean install
                         await _updateService.StartModuleUpdate_Zip(manifest, statusProgress, percentProgress);
                     }
                     else
