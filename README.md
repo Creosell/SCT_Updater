@@ -29,6 +29,46 @@ NC_USER_QA=your_username
 NC_PASSWORD_QA=your_app_password
 ```
 
+## Releasing
+
+The release script is at `tools/release/release_manager.py`. Requires [uv](https://docs.astral.sh/uv/) with an active virtual environment that has the dependencies installed.
+
+### Build specifics
+
+The project targets **.NET Framework 4.8** and uses **Costura.Fody** to embed all dependencies into a single `Updater.exe`. Standard `dotnet publish` does not work for this — build must be done via Visual Studio.
+
+In Visual Studio: set configuration to **Release** → **Build → Build Solution**. The output is in `SCT_Updater\bin\Release\app.publish\`.
+
+### Release steps
+
+**1. Configure credentials**
+
+Copy `tools/release/.env.example` to `tools/release/.env` and fill in Nextcloud credentials.
+
+**2. Build in Visual Studio**
+
+Set configuration to **Release** and build the solution. Verify `SCT_Updater\bin\Release\app.publish\Updater.exe` exists.
+
+**3. Run the release manager**
+
+From the repo root:
+
+```bash
+uv run --active .\tools\release\release_manager.py zip .\SCT_Updater\bin\Release\app.publish\ updater 1.0.1 --upload
+```
+
+Replace `1.0.1` with the actual version from `AssemblyInfo.cs`.
+
+| Argument | Description |
+|----------|-------------|
+| `zip` | Package mode — single zip archive |
+| `.\SCT_Updater\bin\Release\app.publish\` | Path to Costura build output |
+| `updater` | Product identifier on Nextcloud |
+| `1.0.1` | Version (must match `AssemblyVersion` in `AssemblyInfo.cs`) |
+| `--upload` | Skip confirmation and upload immediately |
+
+The script creates `release_artifacts/` locally (gitignored) with the zip and manifest, then uploads to `SCT/Updater/versions/updater/1.0.1/`.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
