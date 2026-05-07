@@ -21,7 +21,7 @@ Windows application for managing updates of Screen Check Tool (SCT) suite compon
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in credentials:
+Create `.env` based on `.env.example` and fill in your Nextcloud credentials:
 
 ```
 NC_SERVER_URL_QA=https://your-nextcloud.example.com
@@ -43,7 +43,7 @@ In Visual Studio: set configuration to **Release** → **Build → Build Solutio
 
 **1. Configure credentials**
 
-Copy `tools/release/.env.example` to `tools/release/.env` and fill in Nextcloud credentials.
+Create `tools/release/.env` based on `tools/release/.env.example` and fill in your Nextcloud credentials.
 
 **2. Build in Visual Studio**
 
