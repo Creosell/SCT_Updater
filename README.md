@@ -54,7 +54,7 @@ Set configuration to **Release** and build the solution. Verify `SCT_Updater\bin
 From the repo root:
 
 ```bash
-uv run --active .\tools\release\release_manager.py zip .\SCT_Updater\bin\Release\app.publish\ updater 1.0.1 --upload
+uv run --active .\tools\release\release_manager.py zip .\SCT_Updater\bin\Release\app.publish\ suite_updater 1.0.1 --upload
 ```
 
 Replace `1.0.1` with the actual version from `AssemblyInfo.cs`.
@@ -63,7 +63,7 @@ Replace `1.0.1` with the actual version from `AssemblyInfo.cs`.
 |----------|-------------|
 | `zip` | Package mode — single zip archive |
 | `.\SCT_Updater\bin\Release\app.publish\` | Path to Costura build output |
-| `updater` | Product identifier on Nextcloud |
+| `suite_updater` | Product identifier on Nextcloud |
 | `1.0.1` | Version (must match `AssemblyVersion` in `AssemblyInfo.cs`) |
 | `--upload` | Skip confirmation and upload immediately |
 
