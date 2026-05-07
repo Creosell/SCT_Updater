@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [1.0.1] - 2026-05-07
 
+### Added
+- Window title now displays application version (e.g. `SCT Updater 1.0.1`)
+
 ### Fixed
 - ZIP update now removes old version files before extracting new archive (pre-cleanup via old manifest)
 - Added `WPF LCD Test.exe` to legacy cleanup list for `screen_checker` product after rename
