@@ -49,7 +49,7 @@ NC_PASSWORD_QA=your_app_password
 
 ## Version
 
-Current version: **1.0.1** (set in `SCT_Updater\Properties\AssemblyInfo.cs` — `AssemblyVersion` / `AssemblyFileVersion`). See [CHANGELOG.md](CHANGELOG.md) for history.
+Current version: **1.1.0** (set in `SCT_Updater\Properties\AssemblyInfo.cs` — `AssemblyVersion` / `AssemblyFileVersion`). See [CHANGELOG.md](CHANGELOG.md) for history.
 
 ## Releasing
 
@@ -57,7 +57,7 @@ See [README.md](README.md#releasing) for full release instructions.
 
 Release command (from repo root):
 ```bash
-uv run --active .\tools\release\release_manager.py zip .\SCT_Updater\bin\Release\app.publish\ suite_updater 1.0.1 --upload
+uv run --active .\tools\release\release_manager.py zip .\SCT_Updater\bin\Release\app.publish\ suite_updater 1.1.0 --upload
 ```
 
 ## Communication Style & Code Standards

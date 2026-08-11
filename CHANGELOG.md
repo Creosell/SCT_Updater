@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.1.0] - 2026-08-11
+
+### Added
+- Device configs sync now supports nested folders (recursive listing via WebDAV `Depth: infinity`)
+- Folders whose name starts with `_` (e.g. `_archive`) are skipped during config sync, at any nesting depth
+
+---
+
 ## [1.0.1] - 2026-05-07
 
 ### Added

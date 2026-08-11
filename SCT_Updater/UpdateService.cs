@@ -32,6 +32,32 @@ namespace SCT_Updater
             }
         }
 
+        /// <summary>
+        /// Determines whether a relative file path lies inside a folder excluded by convention
+        /// (any path segment starting with an underscore, e.g. "_archive").
+        /// </summary>
+        private static bool IsExcludedConfigPath(string relativePath)
+        {
+            string[] segments = relativePath.Split('/', '\\');
+            // Skip the last segment (the file name itself); only folder segments are checked.
+            for (int i = 0; i < segments.Length - 1; i++)
+            {
+                if (segments[i].StartsWith("_", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Filters out relative config file paths that fall under an excluded ("_"-prefixed) folder.
+        /// </summary>
+        private static List<string> FilterExcludedConfigPaths(IEnumerable<string> relativePaths)
+        {
+            return relativePaths.Where(p => !IsExcludedConfigPath(p)).ToList();
+        }
+
         public UpdateService(NextcloudClient nextcloudClient, LocalStateService localState)
         {
             _nextcloudClient = nextcloudClient;
@@ -49,14 +75,16 @@ namespace SCT_Updater
             Log.Debug("Checking device configs...");
             try
             {
-                var serverFiles = await _nextcloudClient.ListFilesAsync(AppConfig.NC_DEVICE_CONFIGS_URL);
+                var serverFiles = FilterExcludedConfigPaths(await _nextcloudClient.ListAllFilesRecursiveAsync(AppConfig.NC_DEVICE_CONFIGS_URL));
                 string localConfigPath = Path.Combine(Application.StartupPath, AppConfig.LOCAL_DEVICE_CONFIGS_PATH);
                 bool localFolderExists = Directory.Exists(localConfigPath);
                 int localFileCount = 0;
 
                 if (localFolderExists)
                 {
-                    localFileCount = Directory.GetFiles(localConfigPath).Length;
+                    var localRelativePaths = Directory.GetFiles(localConfigPath, "*", SearchOption.AllDirectories)
+                        .Select(f => f.Substring(localConfigPath.Length).TrimStart('\\', '/'));
+                    localFileCount = FilterExcludedConfigPaths(localRelativePaths).Count;
                 }
 
                 var configProduct = new Product
@@ -124,7 +152,7 @@ namespace SCT_Updater
             // 1. Get server file list
             statusProgress.Report("Fetching server file list...");
             percentProgress.Report(0);
-            var serverFiles = await _nextcloudClient.ListFilesAsync(serverUrl);
+            var serverFiles = FilterExcludedConfigPaths(await _nextcloudClient.ListAllFilesRecursiveAsync(serverUrl));
 
             // --- CHANGED: Always clear local directory first for a clean sync ---
             statusProgress.Report("Clearing local config directory...");
@@ -146,15 +174,16 @@ namespace SCT_Updater
             var semaphore = new SemaphoreSlim(AppConfig.MAX_PARALLEL_DOWNLOADS);
             var allTasks = new List<Task>();
 
-            foreach (var fileName in serverFiles)
+            foreach (var relativePath in serverFiles)
             {
                 var downloadTask = Task.Run(async () =>
                 {
                     await semaphore.WaitAsync();
                     try
                     {
-                        string fileUrl = $"{serverUrl}/{fileName}";
-                        string localFilePath = Path.Combine(localPath, fileName);
+                        string fileUrl = $"{serverUrl}/{relativePath}";
+                        string localFilePath = Path.Combine(localPath, relativePath);
+                        Directory.CreateDirectory(Path.GetDirectoryName(localFilePath));
                         byte[] data = await _nextcloudClient.DownloadFileBytesAsync(fileUrl);
                         File.WriteAllBytes(localFilePath, data); // Always overwrite
 
@@ -163,7 +192,7 @@ namespace SCT_Updater
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, $"Failed to download config file {fileName}");
+                        Log.Error(ex, $"Failed to download config file {relativePath}");
                         // Continue with other files
                     }
                     finally
