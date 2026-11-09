@@ -370,3 +370,5 @@ FodyWeavers.xsd
 tools/release/.env
 tools/release/release.log
 release_artifacts/
+graphify-out/cache/
+graphify-out/.rebuild.lock

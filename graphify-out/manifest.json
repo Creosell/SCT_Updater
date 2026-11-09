@@ -1,0 +1,188 @@
+{
+  ".claude/skills/systematic-debugging/condition-based-waiting-example.ts": {
+    "mtime": 1786069331.013313,
+    "seen": 1794208473.086488,
+    "ast_hash": "8e502a8c1e9c7de15967202615d241d5",
+    "semantic_hash": ""
+  },
+  ".claude/skills/systematic-debugging/find-polluter.sh": {
+    "mtime": 1786069333.2316422,
+    "seen": 1794208473.0864935,
+    "ast_hash": "6bc3c264a76bd77f191f9a6226805b98",
+    "semantic_hash": ""
+  },
+  "SCT_Updater.sln": {
+    "mtime": 1778146767.64425,
+    "seen": 1794208473.086496,
+    "ast_hash": "c55746169346f4b0421bbf98f5964e5e",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/AppConfig.cs": {
+    "mtime": 1778146301.7212906,
+    "seen": 1794208473.0864973,
+    "ast_hash": "b1f9a2bb1aeb166b01a3780e94a9f1f7",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/Form1.Designer.cs": {
+    "mtime": 1763437238.4549496,
+    "seen": 1794208473.0864985,
+    "ast_hash": "9e5161051be7b5bfff684ac00eb2e2d2",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/Form1.cs": {
+    "mtime": 1778146874.1886504,
+    "seen": 1794208473.0864997,
+    "ast_hash": "c11f760e9e45591917b470c2b1e957ea",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/LocalStateService.cs": {
+    "mtime": 1763364997.0134797,
+    "seen": 1794208473.0865004,
+    "ast_hash": "92b3e4df87f866d19d0dfcf55c31c93f",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/Logger.cs": {
+    "mtime": 1763373665.590432,
+    "seen": 1794208473.0865014,
+    "ast_hash": "06bda6e5afcfa2c974ecb61826319495",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/ManifestClasses.cs": {
+    "mtime": 1763376037.2052138,
+    "seen": 1794208473.086502,
+    "ast_hash": "90fdec2ee729591f2d52658121baf8fe",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/NextcloudClient.cs": {
+    "mtime": 1763545674.959355,
+    "seen": 1794208473.086503,
+    "ast_hash": "3c0634e2df9f4fc8235fc2d057f6ac17",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/Program.cs": {
+    "mtime": 1763019647.2353258,
+    "seen": 1794208473.0865037,
+    "ast_hash": "6d8c2109313abd7ae1fbdb0a8c04f472",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/Properties/AssemblyInfo.cs": {
+    "mtime": 1786436090.3127615,
+    "seen": 1794208473.086505,
+    "ast_hash": "a161f7911aa9487a49f3e3b2f6d2e75f",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/Properties/Resources.Designer.cs": {
+    "mtime": 1763627484.0153618,
+    "seen": 1794208473.0865057,
+    "ast_hash": "4bc90593cb0d1f3dda1327d02a282e6a",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/Properties/Settings.Designer.cs": {
+    "mtime": 1763019647.1584306,
+    "seen": 1794208473.0865066,
+    "ast_hash": "8efab014811224b60404481508bd6eac",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/SCT_Updater.csproj": {
+    "mtime": 1786436066.4532208,
+    "seen": 1794208473.0865076,
+    "ast_hash": "4062afdb9c31ea0b38ae68e8780ab273",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/UpdateService.cs": {
+    "mtime": 1786436023.9247005,
+    "seen": 1794208473.0865083,
+    "ast_hash": "95b1a45e23725a93f1907008440c1479",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/Utility.cs.cs": {
+    "mtime": 1763545956.9350183,
+    "seen": 1794208473.086509,
+    "ast_hash": "5f1b23c76975a205cba423fb6c04f14b",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/manifests/measurement_program_1.1.0.json": {
+    "mtime": 1763356098.5493762,
+    "seen": 1794208473.08651,
+    "ast_hash": "6412ab41f93f4d08e1d0b233c47886be",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/manifests/updater_1.0.0.json": {
+    "mtime": 1763355678.9093595,
+    "seen": 1794208473.0865107,
+    "ast_hash": "0d201772ba2d80dbb5a3eb908a631359",
+    "semantic_hash": ""
+  },
+  "SCT_Updater/release_artifacts/updater_1.0.0.json": {
+    "mtime": 1769150678.7422428,
+    "seen": 1794208473.0865111,
+    "ast_hash": "e3174be279765e4e9bb747fb976be124",
+    "semantic_hash": ""
+  },
+  "tools/release/release_manager.py": {
+    "mtime": 1778144461.7432032,
+    "seen": 1794208473.086512,
+    "ast_hash": "ab1d7659a0ae1b9214ef708104cb5606",
+    "semantic_hash": ""
+  },
+  ".claude/skills/grill-me/SKILL.md": {
+    "mtime": 1786069328.0704002,
+    "seen": 1794208473.0865126,
+    "ast_hash": "d07c47e3f0ffefd2c28354eb81a1e831",
+    "semantic_hash": ""
+  },
+  ".claude/skills/grilling/SKILL.md": {
+    "mtime": 1786069361.1450062,
+    "seen": 1794208473.086514,
+    "ast_hash": "9f7179e83f79d9a62d6ee9c250e46592",
+    "semantic_hash": ""
+  },
+  ".claude/skills/karpathy-guidelines/SKILL.md": {
+    "mtime": 1786069328.7867644,
+    "seen": 1794208473.0865147,
+    "ast_hash": "568fe33228692e85543530ce376f695f",
+    "semantic_hash": ""
+  },
+  ".claude/skills/systematic-debugging/SKILL.md": {
+    "mtime": 1786069329.5105016,
+    "seen": 1794208473.0865152,
+    "ast_hash": "fddf3bab43d22be55daa60a1175e7874",
+    "semantic_hash": ""
+  },
+  ".claude/skills/systematic-debugging/condition-based-waiting.md": {
+    "mtime": 1786069331.734329,
+    "seen": 1794208473.0865161,
+    "ast_hash": "c64d669f2490aa489c514304c9ad46d3",
+    "semantic_hash": ""
+  },
+  ".claude/skills/systematic-debugging/defense-in-depth.md": {
+    "mtime": 1786069332.450611,
+    "seen": 1794208473.086517,
+    "ast_hash": "002a0c9e8bee8fc29f85d7a434916977",
+    "semantic_hash": ""
+  },
+  ".claude/skills/systematic-debugging/root-cause-tracing.md": {
+    "mtime": 1786069333.9692822,
+    "seen": 1794208473.0865178,
+    "ast_hash": "7e96b2fe346c89d4f2300341529178cc",
+    "semantic_hash": ""
+  },
+  "CHANGELOG.md": {
+    "mtime": 1786436098.7380352,
+    "seen": 1794208473.0865188,
+    "ast_hash": "d1aaae87752b9e2b0251e380b633a160",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1786436113.7530882,
+    "seen": 1794208473.0865195,
+    "ast_hash": "687aeb5a5276853118e6d2159473caff",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1778146481.214321,
+    "seen": 1794208473.0865207,
+    "ast_hash": "ed97dba675ca77873be465df1f6aa421",
+    "semantic_hash": ""
+  }
+}
